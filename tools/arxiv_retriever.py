@@ -1,15 +1,18 @@
 import asyncio
+import logging
 import arxiv
 from pathlib import Path
 from langchain_core.tools import tool
 
 from database.vector_db import VectorDB
 
+logger = logging.getLogger("agent_research.arxiv")
 
 _arxiv_client = arxiv.Client()
 
 
 def _download_arxiv_papers_sync(query: str, max_results: int = 5):
+    logger.info("Searching arXiv — query='%s', max_results=%d", query, max_results)
 
     search = arxiv.Search(
         query=query,
@@ -26,6 +29,7 @@ def _download_arxiv_papers_sync(query: str, max_results: int = 5):
         file_name = f"{paper.get_short_id()}.pdf"
         file_path = download_dir / file_name
 
+        logger.info("Downloading paper: '%s' → %s", paper.title, file_path)
         paper.download_pdf(
             dirpath=str(download_dir),
             filename=file_name
@@ -41,8 +45,10 @@ def _download_arxiv_papers_sync(query: str, max_results: int = 5):
             }
         )
 
+    logger.info("Downloaded %d papers, upserting to vector DB", len(results))
     db = VectorDB()
     db.upsert_papers(results)
+    logger.info("Upsert complete")
 
     return results
 

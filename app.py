@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -5,6 +6,13 @@ from pydantic import BaseModel
 
 from agents.agent import run_query
 from database.mongo import MongoDB
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)-7s | %(name)s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger("agent_research.api")
 
 
 @asynccontextmanager
@@ -38,7 +46,11 @@ class HistoryResponse(BaseModel):
 
 @app.post("/ask", response_model=AskResponse)
 async def ask(request: AskRequest):
+    is_new = request.session_id is None
     session_id = request.session_id or MongoDB.generate_session_id()
+
+    logger.info("POST /ask — session='%s' (%s), query='%s'",
+                session_id, "new" if is_new else "existing", request.query[:100])
 
     response = await run_query(request.query, session_id=session_id)
 
@@ -47,6 +59,9 @@ async def ask(request: AskRequest):
         query=request.query,
         response=response,
     )
+
+    logger.info("POST /ask complete — session='%s', response length: %d chars",
+                session_id, len(response))
 
     return AskResponse(
         session_id=session_id,
@@ -57,7 +72,9 @@ async def ask(request: AskRequest):
 
 @app.get("/history/{session_id}", response_model=HistoryResponse)
 async def get_history(session_id: str):
+    logger.info("GET /history — session='%s'", session_id)
     history = await MongoDB.get_history(session_id)
+    logger.info("Returning %d history entries for session='%s'", len(history), session_id)
     return HistoryResponse(session_id=session_id, history=history)
 
 

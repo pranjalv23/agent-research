@@ -1,9 +1,12 @@
+import logging
 import os
 import uuid
 from datetime import datetime, timezone
 
 from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
+
+logger = logging.getLogger("agent_research.mongo")
 
 load_dotenv()
 
@@ -17,6 +20,7 @@ class MongoDB:
     @classmethod
     def get_client(cls) -> AsyncIOMotorClient:
         if cls._client is None:
+            logger.info("Connecting to MongoDB at %s", _MONGO_URI)
             cls._client = AsyncIOMotorClient(_MONGO_URI)
         return cls._client
 
@@ -42,6 +46,7 @@ class MongoDB:
             "created_at": datetime.now(timezone.utc),
         }
         result = await cls._collection().insert_one(doc)
+        logger.info("Saved conversation — session='%s', doc_id='%s'", session_id, result.inserted_id)
         return str(result.inserted_id)
 
     @classmethod

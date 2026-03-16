@@ -1,6 +1,10 @@
+import logging
+
 from agent_sdk.agents import BaseAgent
 from tools.arxiv_retriever import download_arxiv_papers
 from tools.db_queries import check_papers_in_db, retrieve_from_db
+
+logger = logging.getLogger("agent_research.agent")
 
 SYSTEM_PROMPT = (
     "You are an autonomous research assistant. "
@@ -22,6 +26,7 @@ SYSTEM_PROMPT = (
 
 
 def create_agent() -> BaseAgent:
+    logger.info("Creating research agent")
     return BaseAgent(
         tools=[download_arxiv_papers, check_papers_in_db, retrieve_from_db],
         system_prompt=SYSTEM_PROMPT,
@@ -29,5 +34,8 @@ def create_agent() -> BaseAgent:
 
 
 async def run_query(query: str, session_id: str = "default") -> str:
+    logger.info("run_query called — session='%s', query='%s'", session_id, query[:100])
     agent = create_agent()
-    return await agent.arun(query, session_id=session_id)
+    response = await agent.arun(query, session_id=session_id)
+    logger.info("run_query finished — session='%s'", session_id)
+    return response
