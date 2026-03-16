@@ -137,6 +137,7 @@ celerybeat.pid
 # Environments
 .env
 .envrc
+.infisical.json
 .venv
 env/
 venv/
@@ -211,3 +212,4 @@ __marimo__/
 .vscode/
 .idea/
 .DS_Store
+papers/

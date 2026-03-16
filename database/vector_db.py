@@ -4,10 +4,8 @@ from typing import List, Dict, Any
 import pymupdf4llm
 from pinecone import Pinecone, ServerlessSpec
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_nvidia_ai_endpoints import NVIDIAEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from dotenv import load_dotenv
-
-load_dotenv()
 
 _CHUNK_SIZE = 1000
 _CHUNK_OVERLAP = 200
@@ -16,13 +14,25 @@ _UPSERT_BATCH = 100
 
 
 class VectorDB:
-    def __init__(self):
+    # Embedding dimensions per provider
+    _DIMENSIONS = {"gemini": 3072, "nvidia": 4096}
+
+    def __init__(self, provider: str = "nvidia"):
+        self.provider = provider
         self.pinecone = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
         self.index_name = "research-papers"
-        self.embeddings = GoogleGenerativeAIEmbeddings(
-            model="models/text-embedding-004",
-            google_api_key=os.getenv("GEMINI_API_KEY"),
-        )
+
+        if provider == "gemini":
+            self.embeddings = GoogleGenerativeAIEmbeddings(
+                model="gemini-embedding-2-preview",
+                google_api_key=os.getenv("GEMINI_API_KEY"),
+            )
+        else:
+            self.embeddings = NVIDIAEmbeddings(
+                model="nvidia/nv-embedqa-mistral-7b-v2",
+                nvidia_api_key=os.getenv("NVIDIA_API_KEY"),
+            )
+
         self.splitter = RecursiveCharacterTextSplitter(
             chunk_size=_CHUNK_SIZE,
             chunk_overlap=_CHUNK_OVERLAP,
@@ -34,7 +44,7 @@ class VectorDB:
         if self.index_name not in existing:
             self.pinecone.create_index(
                 name=self.index_name,
-                dimension=768,  # Gemini text-embedding-004 dimension
+                dimension=self._DIMENSIONS[self.provider],
                 metric="cosine",
                 spec=ServerlessSpec(cloud="aws", region="us-east-1"),
             )
@@ -93,7 +103,7 @@ class VectorDB:
         query_vector = self.embeddings.embed_query(query)
         results = self.index.query(
             vector=query_vector,
-            top_k=1,
+            top_k=2,
             include_metadata=False,
         )
         return bool(results.matches) and results.matches[0].score >= _EXIST_THRESHOLD
