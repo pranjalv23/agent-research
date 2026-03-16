@@ -32,6 +32,8 @@ class AskRequest(BaseModel):
     query: str
     session_id: str | None = None
 
+    model_config = {"json_schema_extra": {"examples": [{"query": "", "session_id": None}]}}
+
 
 class AskResponse(BaseModel):
     session_id: str
@@ -52,16 +54,20 @@ async def ask(request: AskRequest):
     logger.info("POST /ask — session='%s' (%s), query='%s'",
                 session_id, "new" if is_new else "existing", request.query[:100])
 
-    response = await run_query(request.query, session_id=session_id)
+    result = await run_query(request.query, session_id=session_id)
+    response = result["response"]
+    steps = result["steps"]
 
     await MongoDB.save_conversation(
         session_id=session_id,
         query=request.query,
         response=response,
+        steps=steps,
     )
 
-    logger.info("POST /ask complete — session='%s', response length: %d chars",
-                session_id, len(response))
+    logger.info("POST /ask complete — session='%s', response length: %d chars, tool_calls: %d",
+                session_id, len(response),
+                sum(1 for s in steps if s.get("action") == "tool_call"))
 
     return AskResponse(
         session_id=session_id,

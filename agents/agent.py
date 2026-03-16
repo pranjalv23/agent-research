@@ -16,11 +16,13 @@ SYSTEM_PROMPT = (
     "in the vector database.\n"
     "- `retrieve_from_db(query: str, top_k: int)`: Retrieve relevant research papers from "
     "the vector database using semantic search.\n\n"
-    "Workflow:\n"
-    "1. First use `retrieve_from_db` to check if relevant papers already exist.\n"
-    "2. If not enough results, use `arxiv_download` to fetch new papers.\n"
-    "3. After downloading, use `retrieve_from_db` again to get the most relevant chunks.\n"
+    "Workflow (MANDATORY — you MUST follow these steps for every query):\n"
+    "1. ALWAYS start by calling `retrieve_from_db` to check if relevant papers already exist.\n"
+    "2. If no results or not enough relevant results, call `arxiv_download` to fetch new papers.\n"
+    "3. After downloading, call `retrieve_from_db` again to get the most relevant chunks.\n"
     "4. Synthesize the findings into a clear, structured summary for the user.\n\n"
+    "IMPORTANT: You MUST call at least one tool before giving your final response. "
+    "Never answer directly from your own knowledge — always ground your response in retrieved papers.\n"
     "Always cite paper titles and authors in your response."
 )
 
@@ -33,9 +35,9 @@ def create_agent() -> BaseAgent:
     )
 
 
-async def run_query(query: str, session_id: str = "default") -> str:
+async def run_query(query: str, session_id: str = "default") -> dict:
     logger.info("run_query called — session='%s', query='%s'", session_id, query[:100])
     agent = create_agent()
-    response = await agent.arun(query, session_id=session_id)
-    logger.info("run_query finished — session='%s'", session_id)
-    return response
+    result = await agent.arun(query, session_id=session_id)
+    logger.info("run_query finished — session='%s', steps: %d", session_id, len(result["steps"]))
+    return result

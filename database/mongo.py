@@ -4,11 +4,7 @@ import uuid
 from datetime import datetime, timezone
 
 from motor.motor_asyncio import AsyncIOMotorClient
-from dotenv import load_dotenv
-
 logger = logging.getLogger("agent_research.mongo")
-
-load_dotenv()
 
 _MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
 _DB_NAME = os.getenv("MONGO_DB_NAME", "agent_research")
@@ -38,15 +34,22 @@ class MongoDB:
         session_id: str,
         query: str,
         response: str,
+        steps: list[dict] | None = None,
     ) -> str:
         doc = {
             "session_id": session_id,
             "query": query,
             "response": response,
+            "steps": steps or [],
+            "tools_used": list({s["tool"] for s in (steps or []) if s.get("action") == "tool_call"}),
+            "total_tool_calls": sum(1 for s in (steps or []) if s.get("action") == "tool_call"),
             "created_at": datetime.now(timezone.utc),
         }
         result = await cls._collection().insert_one(doc)
-        logger.info("Saved conversation — session='%s', doc_id='%s'", session_id, result.inserted_id)
+        logger.info(
+            "Saved conversation — session='%s', doc_id='%s', tools_used=%s, tool_calls=%d",
+            session_id, result.inserted_id, doc["tools_used"], doc["total_tool_calls"],
+        )
         return str(result.inserted_id)
 
     @classmethod
