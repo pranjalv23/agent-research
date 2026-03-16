@@ -29,7 +29,7 @@ class VectorDB:
             )
         else:
             self.embeddings = NVIDIAEmbeddings(
-                model="nvidia/nv-embedqa-mistral-7b-v2",
+                model="nvidia/nv-embed-v1",
                 nvidia_api_key=os.getenv("NVIDIA_API_KEY"),
             )
 
@@ -40,14 +40,23 @@ class VectorDB:
         self._ensure_index()
 
     def _ensure_index(self):
-        existing = [idx.name for idx in self.pinecone.list_indexes()]
+        expected_dim = self._DIMENSIONS[self.provider]
+        existing = {idx.name: idx for idx in self.pinecone.list_indexes()}
+
+        if self.index_name in existing:
+            current_dim = existing[self.index_name].dimension
+            if current_dim != expected_dim:
+                self.pinecone.delete_index(self.index_name)
+                existing.pop(self.index_name)
+
         if self.index_name not in existing:
             self.pinecone.create_index(
                 name=self.index_name,
-                dimension=self._DIMENSIONS[self.provider],
+                dimension=expected_dim,
                 metric="cosine",
                 spec=ServerlessSpec(cloud="aws", region="us-east-1"),
             )
+
         self.index = self.pinecone.Index(self.index_name)
 
     def _paper_id(self, pdf_path: str) -> str:
