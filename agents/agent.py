@@ -2,9 +2,8 @@ import logging
 import os
 from datetime import datetime, timezone
 
-from langgraph.checkpoint.mongodb.aio import AsyncMongoDBSaver
-
 from agent_sdk.agents import BaseAgent
+from agent_sdk.checkpoint import AsyncMongoDBSaver
 from database.memory import get_memories, save_memory
 from database.mongo import MongoDB
 
@@ -85,18 +84,28 @@ MCP_SERVERS = {
 }
 
 _agent_instance: BaseAgent | None = None
+_checkpointer: AsyncMongoDBSaver | None = None
+
+
+def _get_checkpointer() -> AsyncMongoDBSaver:
+    global _checkpointer
+    if _checkpointer is None:
+        _checkpointer = AsyncMongoDBSaver.from_conn_string(
+            conn_string=os.getenv("MONGO_URI", "mongodb://localhost:27017"),
+            db_name=os.getenv("MONGO_DB_NAME", "agent_research"),
+        )
+    return _checkpointer
 
 
 def create_agent() -> BaseAgent:
     global _agent_instance
     if _agent_instance is None:
         logger.info("Creating research agent (singleton) with MCP servers")
-        checkpointer = AsyncMongoDBSaver(MongoDB.get_client(), db_name="agent_research")
         _agent_instance = BaseAgent(
             tools=[],
             mcp_servers=MCP_SERVERS,
             system_prompt=SYSTEM_PROMPT,
-            checkpointer=checkpointer,
+            checkpointer=_get_checkpointer(),
         )
     return _agent_instance
 
