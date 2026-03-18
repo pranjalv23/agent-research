@@ -1,4 +1,4 @@
-name: Update SDK Submodule
+name: Update SDK Automatically
 
 on:
   repository_dispatch:
@@ -9,27 +9,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo with submodules
-        uses: actions/checkout@v4
-        with:
-          submodules: true
-          token: ${{ secrets.PAT_TOKEN }}
+      - uses: actions/checkout@v4
 
-      - name: Update submodule to tag
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Update SDK to new tag
         run: |
-          cd agent-sdk
-          git fetch --tags
-          git checkout ${{ github.event.client_payload.tag }}
+          poetry add git+https://github.com/pranjalv23/agent-sdk.git#${{ github.event.client_payload.tag }}
 
       - name: Commit changes
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add agent-sdk
+          git add pyproject.toml poetry.lock
           git commit -m "update sdk to ${{ github.event.client_payload.tag }}" || echo "No changes"
           git push
 
-      - name: Create matching tag
+      - name: Tag repo
         run: |
           git tag ${{ github.event.client_payload.tag }} || echo "Tag exists"
           git push origin ${{ github.event.client_payload.tag }} || echo "Already pushed"
