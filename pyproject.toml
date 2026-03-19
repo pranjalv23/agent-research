@@ -17,13 +17,14 @@ dependencies = [
     "langchain-mcp-adapters (>=0.1.0)",
     "mem0ai (>=1.0.5,<2.0.0)",
     "langgraph-checkpoint-mongodb (>=0.3.1)",
+    "agent-sdk (>=0.1.0)",
 ]
 
 [tool.poetry]
 package-mode = false
 
 [tool.poetry.dependencies]
-agent-sdk = { path = "./agent-sdk", develop = true }
+agent-sdk = { git = "https://github.com/pranjalv23/agent-sdk.git", tag = "v0.1.3" }
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
