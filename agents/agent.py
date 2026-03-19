@@ -71,14 +71,10 @@ then use those specific terms to search arXiv.
 **Always cite paper titles and authors when referencing academic work.**
 """
 
-# MCP server configuration — tools are served remotely via MCP protocol
+# MCP server configuration — all tools served from a single combined MCP server
 MCP_SERVERS = {
-    "web-search": {
-        "url": os.getenv("MCP_WEB_SEARCH_URL", "http://localhost:8010/mcp"),
-        "transport": "streamable_http",
-    },
-    "vector-db": {
-        "url": os.getenv("MCP_VECTOR_DB_URL", "http://localhost:8012/mcp"),
+    "mcp-tool-servers": {
+        "url": os.getenv("MCP_SERVER_URL", "http://localhost:8010/mcp"),
         "transport": "streamable_http",
     },
 }
