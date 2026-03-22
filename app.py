@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request, status
@@ -11,6 +12,17 @@ from agents.agent import create_agent, run_query, stream_query, create_stream, s
 from database.auth import AuthDB
 from database.mongo import MongoDB
 from a2a_service.server import create_a2a_app
+
+def _fix_math_delimiters(text: str) -> str:
+    """Convert LaTeX parenthesis delimiters to Markdown math notation.
+
+    \[...\]  →  $$...$$   (display math — must run before inline to avoid overlap)
+    \(...\)  →  $...$     (inline math)
+    """
+    text = re.sub(r'\\\[(.*?)\\\]', lambda m: f'$$\n{m.group(1)}\n$$', text, flags=re.DOTALL)
+    text = re.sub(r'\\\((.*?)\\\)', r'$\1$', text)
+    return text
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -112,7 +124,7 @@ async def ask(request: AskRequest, http_request: Request):
     result = await run_query(request.query, session_id=session_id,
                              response_format=request.response_format, model_id=request.model_id,
                              user_id=user_id)
-    response = result["response"]
+    response = _fix_math_delimiters(result["response"])
     steps = result["steps"]
 
     await MongoDB.save_conversation(
@@ -156,7 +168,7 @@ async def ask_stream(request: AskRequest, http_request: Request):
             full_response.append(chunk)
             yield f"data: {json.dumps({'text': chunk})}\n\n"
 
-        response_text = "".join(full_response)
+        response_text = _fix_math_delimiters("".join(full_response))
 
         if not response_text.strip():
             fallback = "Sorry, the model returned an empty response. Please try again or switch to a different model."
