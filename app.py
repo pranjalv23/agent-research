@@ -24,6 +24,77 @@ def _fix_math_delimiters(text: str) -> str:
     return text
 
 
+class StreamingMathFixer:
+    """Wraps an async chunk stream and converts \\(...\\) / \\[...\\] math delimiters on-the-fly.
+
+    Non-math text is yielded immediately so the streaming feel is preserved.
+    Math sections are buffered only until their closing delimiter arrives,
+    then emitted with the correct $...$ / $$...$$ notation.
+    """
+
+    def __init__(self, source):
+        self._source = source
+
+    async def __aiter__(self):
+        buffer = ""
+        in_math = False   # inside \( ... \)
+        in_block = False  # inside \[ ... \]
+
+        async for chunk in self._source:
+            buffer += chunk
+            result = ""
+
+            while buffer:
+                if not in_math and not in_block:
+                    bi = buffer.find("\\[")
+                    ii = buffer.find("\\(")
+                    if bi == -1 and ii == -1:
+                        # No delimiter in buffer — yield all but last char
+                        # (guards against a lone trailing backslash)
+                        if len(buffer) > 1:
+                            result += buffer[:-1]
+                            buffer = buffer[-1:]
+                        break
+                    if bi == -1 or (ii != -1 and ii < bi):
+                        result += buffer[:ii]
+                        buffer = buffer[ii + 2:]
+                        in_math = True
+                    else:
+                        result += buffer[:bi]
+                        buffer = buffer[bi + 2:]
+                        in_block = True
+                elif in_math:
+                    close = buffer.find("\\)")
+                    if close == -1:
+                        break  # wait for more chunks
+                    result += "$" + buffer[:close] + "$"
+                    buffer = buffer[close + 2:]
+                    in_math = False
+                else:  # in_block
+                    close = buffer.find("\\]")
+                    if close == -1:
+                        break  # wait for more chunks
+                    result += "$$\n" + buffer[:close] + "\n$$"
+                    buffer = buffer[close + 2:]
+                    in_block = False
+
+            if result:
+                yield result
+
+        # Flush any remaining buffer after the source stream ends
+        if buffer:
+            if in_math:
+                yield "$" + buffer + "$"
+            elif in_block:
+                yield "$$\n" + buffer + "\n$$"
+            else:
+                yield buffer
+
+    @property
+    def steps(self):
+        return self._source.steps
+
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)-7s | %(name)s | %(message)s",
@@ -164,11 +235,11 @@ async def ask_stream(request: AskRequest, http_request: Request):
 
     async def event_stream():
         full_response = []
-        async for chunk in stream:
+        async for chunk in StreamingMathFixer(stream):
             full_response.append(chunk)
             yield f"data: {json.dumps({'text': chunk})}\n\n"
 
-        response_text = _fix_math_delimiters("".join(full_response))
+        response_text = "".join(full_response)
 
         if not response_text.strip():
             fallback = "Sorry, the model returned an empty response. Please try again or switch to a different model."
