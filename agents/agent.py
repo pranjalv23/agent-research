@@ -210,11 +210,21 @@ def create_agent() -> BaseAgent:
     return _agent_instance
 
 
+_TRIVIAL_FOLLOWUPS: frozenset[str] = frozenset({
+    "yes", "no", "sure", "ok", "okay", "please", "yes please",
+    "no thanks", "proceed", "go ahead", "continue", "yeah", "yep",
+})
+
+
 def _build_dynamic_context(session_id: str, query: str, response_format: str | None = None,
                             user_id: str | None = None) -> str:
     """Build dynamic context block (date, memories, format instructions) to prepend to the user query."""
     mem_key = user_id or session_id
-    memories = get_memories(user_id=mem_key, query=query)
+    # Skip Mem0 search for trivial follow-ups — "Yes" has no semantic content to match against.
+    if query.strip().lower() not in _TRIVIAL_FOLLOWUPS and len(query.strip()) > 10:
+        memories = get_memories(user_id=mem_key, query=query)
+    else:
+        memories = []
 
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     year = today[:4]
