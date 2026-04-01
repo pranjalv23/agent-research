@@ -1,8 +1,9 @@
 import logging
 
+import os
 from a2a.server.apps import A2AStarletteApplication
 from a2a.server.request_handlers import DefaultRequestHandler
-from a2a.server.tasks import InMemoryTaskStore
+from agent_sdk.a2a.server.mongodb_task_store import AsyncMongoDBTaskStore
 
 from .agent_card import RESEARCH_AGENT_CARD
 from .executor import ResearchAgentExecutor
@@ -12,7 +13,12 @@ logger = logging.getLogger("agent_research.a2a_server")
 
 def create_a2a_app() -> A2AStarletteApplication:
     """Build the A2A Starlette application for the research agent."""
-    task_store = InMemoryTaskStore()
+    mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+    task_store = AsyncMongoDBTaskStore(
+        conn_string=mongo_uri,
+        db_name=os.getenv("MONGO_DB_NAME", "agent_research"),
+        collection_name="a2a_tasks"
+    )
     executor = ResearchAgentExecutor()
     request_handler = DefaultRequestHandler(
         agent_executor=executor,

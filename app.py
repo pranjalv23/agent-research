@@ -17,7 +17,7 @@ from database.mongo import MongoDB
 from a2a_service.server import create_a2a_app
 
 def _fix_math_delimiters(text: str) -> str:
-    """Convert LaTeX parenthesis delimiters to Markdown math notation.
+    r"""Convert LaTeX parenthesis delimiters to Markdown math notation.
 
     \[...\]  →  $$...$$   (display math — must run before inline to avoid overlap)
     \(...\)  →  $...$     (inline math)
@@ -161,23 +161,23 @@ class HistoryResponse(BaseModel):
 
 @app.post("/ask", response_model=AskResponse)
 @limiter.limit("30/minute")
-async def ask(request: AskRequest, http_request: Request):
-    user_id = http_request.headers.get("X-User-Id") or None
-    is_new = request.session_id is None
-    session_id = request.session_id or MongoDB.generate_session_id()
+async def ask(body: AskRequest, request: Request):
+    user_id = request.headers.get("X-User-Id") or None
+    is_new = body.session_id is None
+    session_id = body.session_id or MongoDB.generate_session_id()
 
     logger.info("POST /ask — session='%s' (%s), user='%s', query='%s'",
-                session_id, "new" if is_new else "existing", user_id or "anonymous", request.query[:100])
+                session_id, "new" if is_new else "existing", user_id or "anonymous", body.query[:100])
 
-    result = await run_query(request.query, session_id=session_id,
-                             response_format=request.response_format, model_id=request.model_id,
+    result = await run_query(body.query, session_id=session_id,
+                             response_format=body.response_format, model_id=body.model_id,
                              user_id=user_id)
     response = _fix_math_delimiters(result["response"])
     steps = result["steps"]
 
     await MongoDB.save_conversation(
         session_id=session_id,
-        query=request.query,
+        query=body.query,
         response=response,
         steps=steps,
         user_id=user_id,
@@ -189,26 +189,26 @@ async def ask(request: AskRequest, http_request: Request):
 
     return AskResponse(
         session_id=session_id,
-        query=request.query,
+        query=body.query,
         response=response,
     )
 
 
 @app.post("/ask/stream")
 @limiter.limit("30/minute")
-async def ask_stream(request: AskRequest, http_request: Request):
-    user_id = http_request.headers.get("X-User-Id") or None
+async def ask_stream(body: AskRequest, request: Request):
+    user_id = request.headers.get("X-User-Id") or None
     """Stream the agent's response as Server-Sent Events (SSE).
 
     Each event is a JSON object with a `text` field containing a chunk.
     The stream ends with a `[DONE]` sentinel.
     """
-    session_id = request.session_id or MongoDB.generate_session_id()
+    session_id = body.session_id or MongoDB.generate_session_id()
     logger.info("POST /ask/stream — session='%s', user='%s', query='%s'",
-                session_id, user_id or "anonymous", request.query[:100])
+                session_id, user_id or "anonymous", body.query[:100])
 
-    stream = create_stream(request.query, session_id=session_id,
-                           response_format=request.response_format, model_id=request.model_id,
+    stream = create_stream(body.query, session_id=session_id,
+                           response_format=body.response_format, model_id=body.model_id,
                            user_id=user_id)
 
     async def event_stream():
@@ -232,11 +232,11 @@ async def ask_stream(request: AskRequest, http_request: Request):
                 response_text = fallback
 
             try:
-                save_memory(user_id=user_id or session_id, query=request.query, response=response_text)
+                save_memory(user_id=user_id or session_id, query=body.query, response=response_text)
 
                 await MongoDB.save_conversation(
                     session_id=session_id,
-                    query=request.query,
+                    query=body.query,
                     response=response_text,
                     steps=stream.steps,
                     user_id=user_id,
