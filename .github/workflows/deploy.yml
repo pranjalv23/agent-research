@@ -36,4 +36,4 @@ jobs:
               echo "Rollback to ${PREV_TAG} complete."
               exit 1
             }
-            docker image prune -f
+            docker image prune -f || true
