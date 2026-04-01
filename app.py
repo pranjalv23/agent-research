@@ -3,6 +3,7 @@ import logging
 import os
 import re
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -98,11 +99,22 @@ class StreamingMathFixer:
         return self._source.steps
 
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)-7s | %(name)s | %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+class _JsonFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        doc = {
+            "ts": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(),
+            "level": record.levelname,
+            "logger": record.name,
+            "msg": record.getMessage(),
+        }
+        if record.exc_info:
+            doc["exc"] = self.formatException(record.exc_info)
+        return json.dumps(doc, ensure_ascii=False)
+
+_handler = logging.StreamHandler()
+_handler.setFormatter(_JsonFormatter())
+logging.root.setLevel(logging.INFO)
+logging.root.addHandler(_handler)
 logger = logging.getLogger("agent_research.api")
 limiter = Limiter(key_func=get_remote_address)
 
