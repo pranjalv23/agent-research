@@ -72,6 +72,12 @@ class MongoDB:
         return await cursor.to_list(length=200)
 
     @classmethod
+    async def ensure_indexes(cls) -> None:
+        db = cls.get_client()[_DB_NAME]
+        await db["conversations"].create_index("created_at", expireAfterSeconds=7_776_000)
+        logger.info("MongoDB TTL indexes ensured")
+
+    @classmethod
     async def close(cls):
         if cls._client:
             cls._client.close()
