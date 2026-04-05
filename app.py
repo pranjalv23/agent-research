@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -145,6 +145,14 @@ _raw_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localh
 _allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()]
 app.add_middleware(CORSMiddleware, allow_origins=_allowed_origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
+@app.middleware("http")
+async def verify_internal_key(request: Request, call_next):
+    if request.url.path not in ["/health", "/docs", "/openapi.json"]:
+        expected = os.getenv("INTERNAL_API_KEY")
+        if expected and request.headers.get("X-Internal-API-Key") != expected:
+            return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content={"detail": "Unauthorized internal access"})
+    return await call_next(request)
+
 # Mount the A2A server as a sub-application
 a2a_app = create_a2a_app()
 app.mount("/a2a", a2a_app.build())
@@ -220,7 +228,7 @@ async def ask_stream(body: AskRequest, request: Request):
     logger.info("POST /ask/stream — session='%s', user='%s', query='%s'",
                 session_id, user_id or "anonymous", body.query[:100])
 
-    stream = create_stream(body.query, session_id=session_id,
+    stream = await create_stream(body.query, session_id=session_id,
                            response_format=body.response_format, model_id=body.model_id,
                            user_id=user_id)
 
