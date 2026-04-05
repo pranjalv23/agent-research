@@ -40,7 +40,7 @@ optional = false
 python-versions = ">=3.13,<4.0"
 groups = ["main"]
 files = []
-develop = false
+develop = true
 
 [package.dependencies]
 fastapi = ">=0.135.1,<0.136.0"
@@ -54,10 +54,8 @@ pydantic = ">=2.12.5,<3.0.0"
 python-dotenv = ">=1.2.2,<2.0.0"
 
 [package.source]
-type = "git"
-url = "https://github.com/agent-hub-org/agent-sdk.git"
-reference = "v0.1.59"
-resolved_reference = "a97b708cf669af5aa8045bbd41d1ff1e1492cfee"
+type = "directory"
+url = "agent-sdk"
 
 [[package]]
 name = "annotated-doc"
@@ -4452,4 +4450,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<3.14"
-content-hash = "9aa7542c55f9a9a9f345346e5cc08ce38b0bb7c20b1dc742c4fb68d1e7c6ca48"
+content-hash = "17a5bb8025a5f763fc5a0297da3f1f8c1c9530dddad68b921b7164a62f85f6a4"
