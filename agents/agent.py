@@ -188,8 +188,6 @@ RESPONSE_FORMAT_INSTRUCTIONS = {
     "detailed": "",
 }
 
-from agent_sdk.agents.formatters import _fix_flash_card_format
-
 def _build_system_prompt(response_format: str | None = None) -> str:
     fmt = RESPONSE_FORMAT_INSTRUCTIONS.get(response_format or "detailed", "")
     if fmt:
@@ -272,9 +270,6 @@ async def run_query(query: str, session_id: str = "default",
     
     agent = create_agent()
     result = await agent.arun(enriched_query, session_id=session_id, system_prompt=system_prompt, model_id=model_id)
-
-    if response_format == "flash_cards":
-        result["response"] = _fix_flash_card_format(result["response"])
 
     logger.info("run_query finished — session='%s', steps: %d", session_id, len(result["steps"]))
 
