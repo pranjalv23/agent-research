@@ -12,6 +12,7 @@ RESEARCH_AGENT_CARD = AgentCard(
     ),
     url=os.getenv("AGENT_PUBLIC_URL", "http://localhost:9002"),
     version="1.0.0",
+    metadata={"mode": "researcher"},
     skills=[
         AgentSkill(
             id="paper-search",
