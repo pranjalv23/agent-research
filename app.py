@@ -174,20 +174,39 @@ async def ask_stream(body: AskRequest, request: Request):
 
     async def event_stream():
         full_response = []
+        last_heartbeat = asyncio.get_event_loop().time()
+
         try:
             try:
                 async with asyncio.timeout(_STREAM_TIMEOUT):
-                    async for chunk in StreamingMathFixer(stream):
-                        full_response.append(chunk)
-                        yield f"data: {json.dumps({'text': chunk})}\n\n"
+                    # Use a wrapper to handle heartbeats if the stream is slow
+                    async def wrapped_stream():
+                        nonlocal last_heartbeat
+                        async for chunk in StreamingMathFixer(stream):
+                            now = asyncio.get_event_loop().time()
+                            if now - last_heartbeat > 15:
+                                yield f": heartbeat {int(now)}\n\n"
+                                last_heartbeat = now
+                            yield chunk
+
+                    async for chunk in wrapped_stream():
+                        if chunk.startswith(": heartbeat"):
+                            yield f"{chunk}"
+                        else:
+                            full_response.append(chunk)
+                            yield f"data: {json.dumps({'text': chunk})}\n\n"
             except TimeoutError:
                 logger.error("Stream timed out after %.0fs", _STREAM_TIMEOUT)
-                fallback = "\n\n[Response timed out. Please try a shorter query.]"
+                error_msg = f"Response timed out after {_STREAM_TIMEOUT:.0f} seconds. Please try a shorter query."
+                yield f"event: error\ndata: {json.dumps({'message': error_msg})}\n\n"
+                fallback = f"\n\n[{error_msg}]"
                 yield f"data: {json.dumps({'text': fallback})}\n\n"
                 full_response.append(fallback)
             except Exception as e:
                 logger.error("Stream failed: %s", e)
-                fallback = "\n\n[An error occurred while generating the response.]"
+                error_msg = "An internal error occurred while generating the response."
+                yield f"event: error\ndata: {json.dumps({'message': error_msg})}\n\n"
+                fallback = f"\n\n[{error_msg}]"
                 yield f"data: {json.dumps({'text': fallback})}\n\n"
                 full_response.append(fallback)
 
