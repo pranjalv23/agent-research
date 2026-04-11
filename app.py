@@ -125,6 +125,13 @@ async def ask(body: AskRequest, request: Request):
     is_new = body.session_id is None
     session_id = body.session_id or MongoDB.generate_session_id()
 
+    if not is_new and user_id:
+        owned_history = await MongoDB.get_history(session_id, user_id=user_id)
+        if not owned_history:
+            any_history = await MongoDB.get_history(session_id)
+            if any_history:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
     logger.info("POST /ask — session='%s' (%s), user='%s', query='%s'",
                 session_id, "new" if is_new else "existing", user_id or "anonymous", body.query[:100])
 
@@ -163,7 +170,15 @@ async def ask_stream(body: AskRequest, request: Request):
     Each event is a JSON object with a `text` field containing a chunk.
     The stream ends with a `[DONE]` sentinel.
     """
+    is_new = body.session_id is None
     session_id = body.session_id or MongoDB.generate_session_id()
+
+    if not is_new and user_id:
+        owned_history = await MongoDB.get_history(session_id, user_id=user_id)
+        if not owned_history:
+            any_history = await MongoDB.get_history(session_id)
+            if any_history:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
     logger.info("POST /ask/stream — session='%s', user='%s', query='%s'",
                 session_id, user_id or "anonymous", body.query[:100])
 
@@ -259,8 +274,9 @@ async def get_history_by_user(request: Request):
 @app.get("/history/{session_id}", response_model=HistoryResponse)
 @limiter.limit("60/minute")
 async def get_history(request: Request, session_id: str):
+    user_id = request.headers.get("X-User-Id") or None
     logger.info("GET /history — session='%s'", session_id)
-    history = await MongoDB.get_history(session_id)
+    history = await MongoDB.get_history(session_id, user_id=user_id)
     logger.info("Returning %d history entries for session='%s'", len(history), session_id)
     return HistoryResponse(session_id=session_id, history=history)
 
@@ -271,9 +287,10 @@ class SessionsHistoryRequest(BaseModel):
 @app.post("/history/sessions")
 @limiter.limit("30/minute")
 async def get_history_by_sessions(request: Request, body: SessionsHistoryRequest):
+    user_id = request.headers.get("X-User-Id") or None
     safe_ids = [s for s in body.session_ids[:20] if isinstance(s, str) and s.isalnum() and len(s) <= 64]
     logger.info("POST /history/sessions — %d session(s)", len(safe_ids))
-    history = await MongoDB.get_history_by_sessions(safe_ids)
+    history = await MongoDB.get_history_by_sessions(safe_ids, user_id=user_id)
     return {"history": history}
 
 
