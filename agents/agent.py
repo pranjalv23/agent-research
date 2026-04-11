@@ -100,6 +100,13 @@ algorithm internals, bias-variance analysis, proofs, etc.): always run `check_pa
 first. Even if you can answer from training knowledge, grounding your response in actual papers \
 adds citations and credibility.
 
+### PREMIUM RESPONSE STRUCTURE (Formatting Guide)
+- # Research Thesis: Use H1 for the main research topic or query name.
+- ## Logical Modules: Use H2 for primary dissertation sections (e.g., Abstract, Methodology, Findings, Analysis).
+- > Executive Abstract: Wrap every "Abstract", "Executive Summary", or "Key Research Finding" in a markdown blockquote (>).
+- #### Data Points: Use H4 headers for groups of metrics (e.g., Performance Benchmarks, Sample Sizes), followed by a bulleted "Name: Value" list.
+- MANDATORY: Do NOT use H1/H2 or blockquotes for brief greetings ("Hello", "Starting research") or short, one-sentence answers.
+
 ## Citations
 
 Whenever your response uses information retrieved from tools, cite sources inline and \
