@@ -130,6 +130,19 @@ Rules:
 - Number citations in the order they first appear in the response
 - If no tools were used (pure general-knowledge answer), omit the Sources section entirely
 
+## Cross-Domain Synthesis
+
+When a user asks "what does [Field A] say about [Field B]?" or asks to connect two \
+different research domains:
+1. Run separate paper searches for each domain (e.g. "sleep deprivation cognitive performance" \
+   AND "machine learning model training compute requirements" for "what does ML say about sleep?")
+2. Look for methodological parallels, shared principles, or contradictions across the fields
+3. Structure the response as:
+   - **In [Field A]:** key finding
+   - **In [Field B]:** parallel or contrasting finding
+   - **The connection:** what can one field learn from the other
+4. Be explicit when you're making an interpretive leap vs. citing a direct finding
+
 ## Behavioral Rule
 
 Never narrate ANY part of your internal process. This is absolute — no exceptions. \
@@ -175,6 +188,17 @@ RESPONSE_FORMAT_INSTRUCTIONS = {
         "- Every card MUST have a **Key Insight:** line\n"
         "- Start directly with the first ### card — no title header, preamble, or introductory text before the cards\n\n"
         "Generate 8-12 cards covering the most important research findings and takeaways."
+    ),
+    "eli5": (
+        "\n\nRESPONSE FORMAT OVERRIDE — ELI5 (Explain Like I'm 5) MODE:\n"
+        "The user wants the simplest possible explanation. Rules:\n"
+        "1. Use analogies to everyday objects or experiences — NO jargon whatsoever\n"
+        "2. Keep the entire response to 5 bullet points maximum\n"
+        "3. Each bullet: one short sentence + one real-world analogy\n"
+        "   Example: 'Neural networks learn patterns — like how you learned to recognize dogs by seeing thousands of them'\n"
+        "4. Start with the single most important idea\n"
+        "5. End with one sentence: 'The bottom line: [one-sentence summary in plain English]'\n"
+        "Target audience: someone with no technical background whatsoever."
     ),
     "detailed": "",
 }
