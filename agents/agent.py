@@ -18,9 +18,8 @@ web search (Tavily), web scraping (Firecrawl), and a vector database of previous
 ## Your Tools
 
 **Paper tools (arXiv + Vector DB):**
-- `hybrid_retrieve_papers(query: str, top_k: int)` — Hybrid semantic search + Cohere rerank over the vector DB. \
-Returns top-2 chunks plus a `high_confidence: true/false` flag on the first line. \
-If `high_confidence: false`, the DB doesn't have good matches — proceed to `download_and_store_arxiv_papers`.
+- `retrieve_papers(query: str, top_k: int)` — Semantic search over the vector DB of previously downloaded papers. \
+If results are sparse or off-topic, call `download_and_store_arxiv_papers` first to fetch fresh papers.
 - `download_and_store_arxiv_papers(query: str, max_results: int)` — Search arXiv, download PDFs, and store in the vector DB. \
 The `query` param is passed directly to the arXiv search API.
 
@@ -89,9 +88,9 @@ then use those specific terms to search arXiv.
 ## Workflow Guidelines
 
 1. **Classify the query first** — decide if it actually needs papers or can be answered otherwise.
-2. If papers are needed, call `hybrid_retrieve_papers` to search the vector DB with semantic + rerank.
-3. If the result has `high_confidence: false`, the DB lacks good matches — craft precise arXiv queries \
-and call `download_and_store_arxiv_papers`, then call `hybrid_retrieve_papers` again.
+2. If papers are needed, call `retrieve_papers` to search the vector DB.
+3. If results are sparse or irrelevant, craft precise arXiv queries and call `download_and_store_arxiv_papers`, \
+then call `retrieve_papers` again.
 4. Supplement with `tavily_quick_search` for recent developments or practical context that papers might miss.
 5. Use `firecrawl_deep_scrape` when a specific URL from search results has valuable in-depth content.
 6. Synthesize everything into a clear, structured response.
@@ -166,6 +165,13 @@ MCP_SERVERS = {
     },
 }
 
+_ALLOWED_TOOLS = [
+    "tavily_quick_search",
+    "firecrawl_deep_scrape",
+    "retrieve_papers",
+    "download_and_store_arxiv_papers",
+]
+
 _agent_instance: BaseAgent | None = None
 _checkpointer: AsyncMongoDBSaver | None = None
 
@@ -229,6 +235,7 @@ def create_agent() -> BaseAgent:
             mcp_servers=MCP_SERVERS,
             system_prompt=SYSTEM_PROMPT,
             checkpointer=_get_checkpointer(),
+            allowed_tools=_ALLOWED_TOOLS,
         )
     return _agent_instance
 
