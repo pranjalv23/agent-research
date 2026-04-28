@@ -244,10 +244,7 @@ def create_agent() -> BaseAgent:
     return _agent_instance
 
 
-_TRIVIAL_FOLLOWUPS: frozenset[str] = frozenset({
-    "yes", "no", "sure", "ok", "okay", "please", "yes please",
-    "no thanks", "proceed", "go ahead", "continue", "yeah", "yep",
-})
+from agent_sdk.utils.text import TRIVIAL_FOLLOWUPS as _TRIVIAL_FOLLOWUPS
 
 
 async def _build_dynamic_context(session_id: str, query: str, response_format: str | None = None,
