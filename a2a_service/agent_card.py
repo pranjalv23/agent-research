@@ -1,6 +1,6 @@
 import os
 
-from a2a.types import AgentCard, AgentSkill, AgentCapabilities
+from a2a.types import AgentCard, AgentCapabilities, AgentInterface, AgentSkill
 
 
 RESEARCH_AGENT_CARD = AgentCard(
@@ -10,9 +10,13 @@ RESEARCH_AGENT_CARD = AgentCard(
         "academic papers from arXiv. Specializes in AI, ML, computer science, "
         "and scientific research literature."
     ),
-    url=os.getenv("AGENT_PUBLIC_URL", "http://localhost:9002"),
+    supported_interfaces=[
+        AgentInterface(
+            url=os.getenv("AGENT_PUBLIC_URL", "http://localhost:9002"),
+            protocol_binding="JSONRPC",
+        )
+    ],
     version="1.0.0",
-    metadata={"mode": "researcher"},
     skills=[
         AgentSkill(
             id="paper-search",
@@ -27,7 +31,7 @@ RESEARCH_AGENT_CARD = AgentCard(
             tags=["research", "AI", "ML", "review", "synthesis"],
         ),
     ],
-    defaultInputModes=["text"],
-    defaultOutputModes=["text"],
-    capabilities=AgentCapabilities(streaming=True, pushNotifications=False),
+    default_input_modes=["text"],
+    default_output_modes=["text"],
+    capabilities=AgentCapabilities(streaming=True, push_notifications=False),
 )
